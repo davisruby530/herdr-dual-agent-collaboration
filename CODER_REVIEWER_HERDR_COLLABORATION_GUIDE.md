@@ -1,12 +1,33 @@
 # 基于 Herdr 的 Coder–Reviewer 双智能体协同与工单验收机制规范指南
 ### (The Coder-Reviewer Dual-Agent Collaboration & Acceptance Guide over Herdr)
 
-> **版本**：v1.1 (通用解耦与跨项目可复现资产)  
+> **版本**：v1.2 (通用解耦与跨项目可复现全套工程/数据资产包)  
 > **适用场景**：复杂学术实证研究、大规模数据清洗与分析、高可靠性软件工程及多智能体长期协作项目  
 > **核心基础设施**：[Herdr](https://herdr.dev) 多智能体终端与工作区管理器  
 > **协作角色矩阵**：人类负责人 (Human Principal) + 执行智能体 (Agent Coder) + 审查智能体 (Agent Reviewer)
 
 ---
+
+## 🗂️ 仓库通用资产导航 (Repository Assets Matrix)
+
+本仓库提供从协作方法论、流程控制台账到可复现工程/数据工具的端到端开箱即用支持：
+
+| 模块类别 | 文件/目录路径 | 核心功能与复用定位 |
+| :--- | :--- | :--- |
+| **协作规范指南** | [`README.md`](./README.md) / [`CODER_REVIEWER_HERDR_COLLABORATION_GUIDE.md`](./CODER_REVIEWER_HERDR_COLLABORATION_GUIDE.md) | 双智能体权力分立、两铁律、Herdr 动态通信协议与 SOP 全流程指南 |
+| **标准写作流** | [`论文写作workflow v1 1014.txt`](./论文写作workflow%20v1%201014.txt) / [`templates/paper_writing_workflow.txt`](./templates/paper_writing_workflow.txt) | 顶级学术期刊 (Research Policy / Evaluation) 标准的论文各章节写作与审查 8 步工作流 |
+| **落地协作规则** | [`templates/AGENTS.md`](./templates/AGENTS.md) | 新项目直接复制到根目录，立即生效三权分立与不可逾越两铁律 |
+| **工单追踪台账** | [`templates/issue-tracker.md`](./templates/issue-tracker.md) | 新项目工单拓扑依赖图、状态机流转（`pending`/`in_progress`/`completed`）模板 |
+| **标准提审报告** | [`templates/review_submission_template.md`](./templates/review_submission_template.md) | Coder 提审标准 Markdown 骨架（对账前轮阻断项、测试数据证据） |
+| **标准验收意见** | [`templates/review_acceptance_template.md`](./templates/review_acceptance_template.md) | Reviewer 独立复核标准 Markdown 骨架（沙箱复验凭证、必须修改项） |
+| **通用工具：分发打包** | [`tools/build_distribution_zip.py`](./tools/build_distribution_zip.py) | 跨平台零乱码科研分发包构建工具（强制启用 PKZIP UTF-8 Bit 11，过滤垃圾缓存） |
+| **通用工具：学术排版** | [`tools/beautify_academic_docx.py`](./tools/beautify_academic_docx.py) | 出版级学术 Word 终稿排版器（A4学术版式、标准三线表重塑、中西文字体分离注入） |
+| **通用工具：防幻断言** | [`tools/verify_grounding_assertions.py`](./tools/verify_grounding_assertions.py) | 大模型信息抽取原文物理字符切片硬断言校验器（`source[start:end] == quote`） |
+| **通用工具：守恒审计** | [`tools/audit_multiset_integrity.py`](./tools/audit_multiset_integrity.py) | 大规模数据流水线多重集守恒与分母闭合审计器（$N_{\text{raw}} = N_{\text{valid}} + N_{\text{excluded}}$） |
+| **工具箱使用手册** | [`tools/README.md`](./tools/README.md) | 工具箱依赖说明、命令行参数与各场景最佳实践指南 |
+
+---
+
 
 ## 一、体系背景与核心设计哲学
 
