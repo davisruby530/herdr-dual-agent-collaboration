@@ -1,24 +1,17 @@
-# 项目工单执行追踪总账 (issue-tracker.md)
+# 工单索引 (issue-tracker.md，可选)
 
-## 工单依赖图拓扑
-```mermaid
-flowchart TD
-    T01["Ticket-01: 环境配置与基础输入校验"] --> T02["Ticket-02: 核心业务处理流水线"]
-    T02 --> T03["Ticket-03: 数据资产生成与多重集审计"]
-    T03 --> T04["Ticket-04: 综合统计分析与可视化交付"]
-```
+> 工单的唯一事实来源是 `/to-tickets` 发布到 tracker 的工单本身（本地 `.scratch/<spec-slug>/issues/<NN>-<slug>.md`，或 GitHub/Linear issue）。本文件只是给人看的索引视图，**状态以工单本身为准**；若与工单不一致，以工单为准并修正本文件。不需要时可以不建。
 
-## 活动工单清单
+## Spec：<spec-slug>（<tracker 链接>）
 
-| 工单编号 | 工单名称 | 负责人 | 当前状态 | 阻塞依赖 | 最新审查报告 |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **Ticket-01** | 环境配置与基础输入校验 | Coder | `completed` | 无 | `docs/reviews/ticket-01-acceptance.md` |
-| **Ticket-02** | 核心业务处理流水线 | Coder | `in_progress` | Ticket-01 | `docs/reviews/ticket-02-submission.md` |
-| **Ticket-03** | 数据资产生成与多重集审计 | Coder | `pending` | Ticket-02 | - |
-| **Ticket-04** | 综合统计分析与可视化交付 | Coder | `pending` | Ticket-03 | - |
+| 工单 | 标题 | 前置工单 | 状态 | 最新评审记录 |
+| :--- | :--- | :--- | :--- | :--- |
+| 01 | <标题> | 无 | `completed` | `docs/reviews/<spec-slug>/01-acceptance-round2.md` |
+| 02 | <标题> | 01 | `in_progress` | `docs/reviews/<spec-slug>/02-submission-round1.md` |
+| 03 | <标题> | 01 | `ready-for-agent` | - |
 
-## 工单状态机说明
-- `pending`：待办（前置工单未就绪或尚未启动）
-- `in_progress`：正在执行或返修中（包含提审中及 CHANGES_REQUIRED 状态）
-- `completed`：已闭环（经 Reviewer 独立复核并明确出具 ACCEPTED 结论）
-- `superseded`：已废弃或被新工单替代
+## 状态
+- `ready-for-agent`：已发布、未开工（`/to-tickets` 的初始状态）
+- `in_progress`：执行中、提审中或返修中
+- `completed`：Reviewer 已出具 ACCEPTED
+- `superseded`：因规划阶段修订 Spec 而被新工单替代
