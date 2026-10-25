@@ -19,7 +19,7 @@
 
 ### 1. `build_distribution_zip.py`：跨平台零乱码成果包构建
 
-在 macOS 上打包包含中文目录与文档的科研包时，Windows 自带解压或 WinRAR 经常因 GBK/UTF-8 字符集判断失误而发生乱码。本工具强制为每个文件注入 PKZIP 规范的 **Bit 11 (0x800) Language Encoding Flag**，并在打包时自动剔除 `.DS_Store`、`__MACOSX`、`.git`、`__pycache__` 等冗余垃圾。
+在 macOS 上打包包含中文目录与文档的科研包时，Windows 自带解压或 WinRAR 经常因 GBK/UTF-8 字符集判断失误而发生乱码。本工具强制为每个文件注入 PKZIP 规范的 **Bit 11 (0x800) Language Encoding Flag**，并在打包时自动剔除 `.DS_Store`、`__MACOSX`、`.git`、`__pycache__` 等冗余垃圾。凭据与密钥（`.env`、`.env.*`、`*.pem`、`*.key`、`id_rsa*`、`.ssh/`、`.netrc` 等）也会自动跳过并在输出中列出；输出包位于源目录内时不会把自身打进去。
 
 ```bash
 # 基本用法：将成果目录打包为 release.zip，并增加顶层目录前缀
@@ -46,7 +46,7 @@ python3 tools/beautify_academic_docx.py raw_draft.docx publication_ready.docx
 
 大模型在做长文本抽取时，容易产生“局部篡改原文”或“伪造切片坐标”的幻觉。本工具逐条核验抽取结果：
 $$\text{source\_text}[\text{char\_start}:\text{char\_end}] == \text{extracted\_quote}$$
-单字不符或全篇放行 `[0, len)` 立即报错并阻断交付。
+单字不符、坐标为布尔值或越界、原句为空、全篇坐标 `[0, len)`（无论文本长短；确为整篇引用时显式传 `--allow-full-span`），以及抽取文件为空（0 条断言），都会报错并阻断交付。`--id-field` 同时作用于语料库与抽取结果。
 
 ```bash
 # 对语料库与抽取结果做 100% 物理硬断言对账
@@ -67,7 +67,7 @@ python3 tools/verify_grounding_assertions.py \
 
 在大规模实证数据流中把守数学守恒底线：
 $$\text{全量输入 } N_{\text{raw}} = \text{有效处理 } N_{\text{valid}} + \text{合法排除 } N_{\text{excluded}}$$
-严格断言交集为空、并集完全一致、零重复键、零静默丢弃。
+严格断言交集为空、并集完全一致、任一文件零重复键、零静默丢弃、计数守恒。记录缺少 ID 字段（依次尝试 `--id-key`、`paper_id`、`doc_id`）时直接报错，不会被当作空串放行。
 
 ```bash
 python3 tools/audit_multiset_integrity.py \
@@ -76,4 +76,14 @@ python3 tools/audit_multiset_integrity.py \
     --excluded path/to/excluded_records.json \
     --id-key id \
     --report path/to/denominator_audit_report.json
+```
+
+---
+
+## 🧪 回归测试
+
+工具箱与骨架里的 `scripts/wait-for-verdict.sh` 都有回归测试，只依赖 Python 标准库：
+
+```bash
+python3 -m unittest discover -s tools/tests
 ```

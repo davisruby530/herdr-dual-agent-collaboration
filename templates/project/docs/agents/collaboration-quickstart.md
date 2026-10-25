@@ -8,8 +8,8 @@
 
 ## 一次性准备
 
-1. **骨架已就位**：本文件随项目骨架（`templates/project/`）复制而来，同时到位的还有 `AGENTS.md`、`CLAUDE.md`、`docs/reviews/` 下的两份评审模板。如果项目原本就有 `AGENTS.md` 或 `CLAUDE.md`，复制时会被跳过，需要手工把规则合并进去。
-2. **配置 tracker**：在项目里运行 `/setup-matt-pocock-skills`，选本地 `.scratch` 或 GitHub。Spec 和工单都会发布到这里。
+1. **骨架已就位**：本文件随项目骨架（`templates/project/`）复制而来，同时到位的还有 `AGENTS.md`、`CLAUDE.md`、`docs/reviews/` 下的两份评审模板和 `scripts/wait-for-verdict.sh`。项目必须是 git 仓库：Coder 每张工单都会 commit，Reviewer 按 commit 在 worktree 里复验。如果项目原本就有 `AGENTS.md` 或 `CLAUDE.md`，复制时会被跳过，需要手工把规则合并进去。
+2. **配置 tracker**：在项目里运行 `/setup-matt-pocock-skills`，选本地 `.scratch` 或 GitHub。Spec 和工单都会发布到这里。setup 会把 `## Agent skills` 写进 `CLAUDE.md`，这是正常的；pi、Codex 通过 `AGENTS.md` 第 0 节找到 tracker 配置。用 GitHub 的话，先确保 `gh auth status` 显示已登录。
 
 ## 每个 Spec 的流程
 
@@ -42,21 +42,22 @@
 /goal 你是本项目的 Coder。按 AGENTS.md 执行阶段规则，推进 Spec <链接> 下的全部工单，直至全部 completed 或需要上报。
 ```
 
-之后 Coder 会自动循环：实现工单 → 自检 → 提审，然后等待 Reviewer 裁决，通过后进入下一张，退回则修复后重新提审。评审记录在 `docs/reviews/<spec-slug>/`。
+之后 Coder 会自动循环：实现工单 → 自检 → commit → 提审，然后用 `scripts/wait-for-verdict.sh` 阻塞等待 Reviewer 裁决，通过后进入下一张，退回则修复后重新提审。评审记录在 `docs/reviews/<spec-slug>/`。
 
 ### 4. 你只需要处理上报
-Coder 遇到以下情况会暂停并通知你：
+Coder 遇到以下情况会停下，并以【上报】开头说明原因：
 
 | 上报原因 | 你要做的 |
 | :--- | :--- |
-| 同一工单第 3 轮仍为 CHANGES_REQUIRED | 读最新的 submission 和 acceptance，裁定由谁让步，然后让 Coder 继续 |
-| Coder 不认可某个必须修改项 | 在 Coder 与 Reviewer 之间仲裁，把结论告诉双方 |
-| Spec 或工单有缺陷 | 回到规划阶段：`/grill-with-docs` 只针对缺陷修订 Spec，`/to-tickets` 重新生成受影响且未完成的工单，旧工单标为 `superseded`，再重新发 `/goal` |
+| 同一工单连续 3 轮为 CHANGES_REQUIRED | 读最新的 submission 和 acceptance，裁定由谁让步，然后重新发 `/goal` 让 Coder 继续（轮次从下一轮重新计数） |
+| Coder 不认可某个必须修改项 | 在 Coder 与 Reviewer 之间仲裁，把结论告诉双方，再重新发 `/goal` |
+| Spec 或工单有缺陷 | 回到规划阶段：`/grill-with-docs` 只针对缺陷修订 Spec，`/to-tickets` 重新生成受影响且未完成的工单，旧工单标为 `superseded`，再重新发 `/goal`。**调用 `/to-tickets` 时务必说明："从现有最大编号加 1 开始编号，不要删除或改写已有工单文件"**，否则它会从 01 开始，覆盖旧工单。 |
 
 已经 `completed` 的工单默认不重开。
 
 ## 常见问题
 
-- **Coder 没等裁决就开始下一张工单**：违反了 `AGENTS.md` 第 5 节。让它把这张工单退回 `in_progress`，并提醒它提审后要结束回合。
+- **Coder 没等裁决就开始下一张工单，或提审后反复"醒来—检查—结束"空转**：违反了 `AGENTS.md` 第 5 节。提醒它用 `scripts/wait-for-verdict.sh` 阻塞等待，不要用结束回合来等。
+- **`wait-for-verdict.sh` 没有执行权限**：`chmod +x scripts/wait-for-verdict.sh` 后提交。
 - **Reviewer 没反应**：先用 `herdr pane list` 检查窗格还在不在；如果会话是新开的，重发上面的启动语。
 - **想看进度**：查 tracker 里各工单的 `Status`，或者看 `docs/reviews/<spec-slug>/` 下编号最大的那一轮。

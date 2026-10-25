@@ -3,6 +3,7 @@
 > **Spec**：<spec-slug>  
 > **工单**：<NN> <工单标题>  
 > **审查轮次**：Round <N>  
+> **复验 commit**：`<hash>`（与提审报告一致）  
 > **Reviewer**：<标识与模型>  
 > **审查时间**：<YYYY-MM-DD HH:MM>  
 > **证据快照**：`docs/reviews/<spec-slug>/<NN>-evidence-round<N>.json`  
@@ -11,7 +12,7 @@
 ---
 
 ## 一、复核范围
-- **沙箱目录**：`/tmp/sandbox-review-<...>`
+- **沙箱**：`git worktree add --detach /tmp/sandbox-review-<spec-slug>-<NN>-r<N> <commit>`；未纳入 git 的文件已核对 SHA-256：<是 / 不涉及>
 - **工单类型复核**：Coder 声明为 <类型>，Reviewer <同意 / 不同意，理由>
 - **本轮范围**：<Round 1 为全量复核；之后只复核前轮必须修改项及其影响面>
 

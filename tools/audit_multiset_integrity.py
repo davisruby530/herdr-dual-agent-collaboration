@@ -15,7 +15,7 @@ audit_multiset_integrity.py
    - 唯一性公理（无重复键）：len(ids) == len(set(ids))
 
 用法：
-    python audit_multiset_integrity.py --input-raw <file> --input-valid <file> --input-excluded <file> [options]
+    python audit_multiset_integrity.py --raw <file> --valid <file> [--excluded <file>] [--id-key id] [--report <file>]
 
 输入文件支持 JSON、JSONL 或纯文本每行一个 ID (TXT)。
 """
@@ -25,6 +25,24 @@ import json
 import argparse
 from pathlib import Path
 from typing import Set, List, Dict, Any
+
+
+class MissingIdError(ValueError):
+    """记录缺少唯一 ID。缺 ID 的记录无法对账，必须显式失败而不是当作空串放行。"""
+
+
+def record_id(item: Any, id_key: str, filepath: Path, position: int) -> str:
+    """取记录的唯一 ID；依次尝试 id_key、paper_id、doc_id，全部缺失或为空则报错"""
+    if not isinstance(item, dict):
+        value = item
+    else:
+        value = next(
+            (item[k] for k in (id_key, "paper_id", "doc_id") if item.get(k) not in (None, "")),
+            None,
+        )
+    if value is None or str(value) == "":
+        raise MissingIdError(f"{filepath} 第 {position} 条记录缺少唯一 ID 字段 '{id_key}'")
+    return str(value)
 
 
 def extract_ids_from_file(filepath: Path, id_key: str = "id") -> List[str]:
@@ -37,27 +55,22 @@ def extract_ids_from_file(filepath: Path, id_key: str = "id") -> List[str]:
 
     if suffix == ".jsonl":
         with open(filepath, "r", encoding="utf-8") as f:
+            position = 0
             for line in f:
                 line = line.strip()
                 if line:
-                    item = json.loads(line)
-                    ids.append(str(item.get(id_key, item.get("paper_id", item.get("doc_id", "")))))
+                    position += 1
+                    ids.append(record_id(json.loads(line), id_key, filepath, position))
     elif suffix == ".json":
         with open(filepath, "r", encoding="utf-8") as f:
             data = json.load(f)
+            if isinstance(data, dict) and isinstance(data.get("items"), list):
+                data = data["items"]
             if isinstance(data, list):
-                for item in data:
-                    if isinstance(item, dict):
-                        ids.append(str(item.get(id_key, item.get("paper_id", item.get("doc_id", "")))))
-                    else:
-                        ids.append(str(item))
+                ids = [record_id(item, id_key, filepath, i) for i, item in enumerate(data, 1)]
             elif isinstance(data, dict):
-                # 如果字典的键本身就是 ID
-                if "items" in data and isinstance(data["items"], list):
-                    for item in data["items"]:
-                        ids.append(str(item.get(id_key, "")))
-                else:
-                    ids = [str(k) for k in data.keys()]
+                # 字典的键本身就是 ID
+                ids = [str(k) for k in data.keys()]
     else:
         # TXT 每行一个 ID
         with open(filepath, "r", encoding="utf-8") as f:
@@ -82,9 +95,13 @@ def audit_multiset(
     if excluded_file:
         print(f"    - 合法排除集 (Excluded): {excluded_file}")
 
-    raw_ids = extract_ids_from_file(raw_file, id_key=id_key)
-    valid_ids = extract_ids_from_file(valid_file, id_key=id_key)
-    excluded_ids = extract_ids_from_file(excluded_file, id_key=id_key) if excluded_file else []
+    try:
+        raw_ids = extract_ids_from_file(raw_file, id_key=id_key)
+        valid_ids = extract_ids_from_file(valid_file, id_key=id_key)
+        excluded_ids = extract_ids_from_file(excluded_file, id_key=id_key) if excluded_file else []
+    except MissingIdError as e:
+        print(f"[FAIL] {e}", file=sys.stderr)
+        return 1
 
     n_raw = len(raw_ids)
     n_valid = len(valid_ids)
@@ -107,7 +124,18 @@ def audit_multiset(
     missing_ids = set_raw - accounted_set       # 静默丢失
     unexpected_ids = accounted_set - set_raw    # 凭空多出
 
-    is_conserved = (len(missing_ids) == 0) and (len(unexpected_ids) == 0) and (len(overlap) == 0)
+    # 4. 计数守恒：在无重复的前提下，N_raw == N_valid + N_excluded
+    count_balanced = n_raw == n_valid + n_excluded
+
+    is_conserved = (
+        len(missing_ids) == 0
+        and len(unexpected_ids) == 0
+        and len(overlap) == 0
+        and raw_dups == 0
+        and valid_dups == 0
+        and excluded_dups == 0
+        and count_balanced
+    )
 
     print("=" * 65)
     print(f"[*] 多重集守恒审计结果:")
@@ -136,6 +164,7 @@ def audit_multiset(
         },
         "integrity_checks": {
             "is_conserved": is_conserved,
+            "count_balanced": count_balanced,
             "raw_duplicates": raw_dups,
             "valid_duplicates": valid_dups,
             "excluded_duplicates": excluded_dups,
@@ -157,7 +186,7 @@ def audit_multiset(
         print(f"[+] 审计报告已归档: {report_output}")
 
     if not is_conserved:
-        print("[FAIL] 多重集对账失败！存在静默丢弃、归类冲突或额外多出 ID！", file=sys.stderr)
+        print("[FAIL] 多重集对账失败！存在重复键、静默丢弃、归类冲突、额外多出 ID 或计数不守恒！", file=sys.stderr)
         return 1
 
     print("[SUCCESS] 多重集数学守恒 100% 成立！分母流向完全闭合且可审计！")

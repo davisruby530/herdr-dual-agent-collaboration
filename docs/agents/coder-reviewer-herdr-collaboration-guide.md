@@ -97,24 +97,38 @@ Reviewer 窗格不会从 goal 得知自己的角色，因此每次新开 Reviewe
    - **代码**：调用 `tdd`；
    - **数据**：调用 `tdd`，并满足第八节的数据防线；
    - **写作**：按验收标准与写作规范修改，逐条自检；
-3. 代码和数据工单调用 `code-review` 自检并修复；
-4. 写提审报告，用 Herdr 通知 Reviewer，**结束回合**。
+3. 代码和数据工单调用 `code-review` 自检并修复。缺少这两个技能的 agent，按测试先行、提交前自审的原则手工执行，并在报告中注明；
+4. **提交（commit）本工单改动**，提审报告写明 commit hash；
+5. 写提审报告，用 Herdr 通知 Reviewer，进入等待。
 
-### 2. 等待
-提审后 Coder 不开新工单，也不自行判断是否通过。被 goal 续跑唤醒时，只检查本轮验收报告是否存在；不存在就再次结束回合。这是 goal 模式下最容易出问题的地方：续跑会打断"等待"，让 agent 自作主张往下推进。
+### 2. 等待：在一次工具调用内阻塞
+Claude Code 的 `/goal` 用 Stop hook 实现：**每轮结束后检查目标是否达成，未达成就让 agent 继续工作**。所以 Coder 不能用"结束回合"来等待，否则会被立即续跑，反复空转消耗 token，甚至自作主张往下推进。
+
+正确做法是运行骨架自带的等待脚本，在一次工具调用内阻塞：
+
+```bash
+scripts/wait-for-verdict.sh docs/reviews/<spec-slug>/<NN>-acceptance-round<N>.md   # 命令超时设为 600 秒
+```
+
+- 退出码 0：验收报告已出现；
+- 退出码 2：约 9 分钟内尚未出结果，立即再次运行。
+
+为避免读到写了一半的报告，Reviewer 先写 evidence，再把验收报告写到 `.tmp` 文件，最后 `mv` 成正式文件名。Herdr 的【裁决】通知只是提示，以文件为准。
 
 ### 3. 处理裁决
-- **ACCEPTED**：改为 `completed`，进入下一张工单；
+- **ACCEPTED**：提交验收报告、证据快照与状态变更（改为 `completed`），进入下一张工单；
 - **CHANGES_REQUIRED**：只修必须修改项，以 Round N+1 重新提审；
-- **goal 完成条件**：当前 Spec 下全部工单为 `completed` 或 `superseded`。
+- **goal 完成条件**：当前 Spec 下全部工单为 `completed` 或 `superseded`，或已上报。goal 的完成条件里必须包含"或已上报"，否则上报后 Stop hook 仍会让 Coder 继续工作。
 
 ### 4. 上报 Principal
-遇到以下任一情况，Coder 停止推进并通知 Principal：
-- 同一工单第 3 轮仍为 CHANGES_REQUIRED；
+遇到以下任一情况，Coder 停止推进，在最后一条消息以【上报】开头写明原因与相关文件：
+- 同一工单连续 3 轮为 CHANGES_REQUIRED（Principal 仲裁后从下一轮重新计数）；
 - Coder 不认可某个必须修改项；
 - 发现 Spec 或工单本身有缺陷。
 
 Spec 缺陷的处理回路：Principal 回到规划阶段，只针对缺陷修订 Spec → `/to-tickets` 重新生成受影响且未 `completed` 的工单 → 被替换的旧工单标为 `superseded` → 重新发出 `/goal`。已 `completed` 的工单默认不重开。
+
+**重新生成工单时，要明确告诉 `/to-tickets`"从现有最大编号加 1 开始编号，不得删除或改写已有工单文件"。** `/to-tickets` 默认从 `01` 编号，不加这句话会覆盖旧工单文件，评审记录也会撞名。
 
 ```mermaid
 sequenceDiagram
@@ -127,14 +141,15 @@ sequenceDiagram
     P->>C: /goal 推进 Spec 下全部工单
     loop 每张可开工工单
         Note over C: 判定类型 → tdd / 写作自检 → code-review
-        C->>C: 写 <NN>-submission-roundN.md
-        C->>H: 提审通知，结束回合
+        C->>C: commit，写 <NN>-submission-roundN.md
+        C->>H: 提审通知
+        Note over C: wait-for-verdict.sh 阻塞等待
         H->>R: 唤醒
         Note over R: 沙箱复验 + 逐条核对验收标准
-        R->>R: 写 acceptance 与 evidence
+        R->>R: 写 evidence，再写 acceptance（.tmp → mv）
         R->>H: 裁决通知
-        H->>C: 唤醒
-        alt CHANGES_REQUIRED（第 3 轮以内）
+        Note over C: 等待脚本检测到报告，返回
+        alt CHANGES_REQUIRED（未满连续 3 轮）
             C->>C: 修复必须修改项，Round N+1
         else ACCEPTED
             C->>C: 标记 completed，取下一张
@@ -159,7 +174,7 @@ sequenceDiagram
 每个必须修改项都要写明实际问题、后果，以及最低改到什么程度即可通过。不得推翻已确认的方案或要求推倒重来；历史讨论中的建议不会自动成为新的验收条件。
 
 ### 4. 沙箱复验
-Reviewer 不能只看代码或只信 Coder 的日志，必须在独立临时目录（如 `/tmp/sandbox-review-*`）重新运行测试与关键计算。
+Reviewer 不能只看代码或只信 Coder 的日志。复验对象是提审报告写明的 commit：用 `git worktree add --detach /tmp/sandbox-review-<spec-slug>-<NN>-r<N> <commit>` 检出，在其中重新运行测试与关键计算；未纳入 git 的文件按报告列出的路径只读引用并核对 SHA-256，复验结束后 `git worktree remove`。这样 Coder 工作区的后续变动不会影响复验，复验对象也有据可查。
 
 ---
 
@@ -184,6 +199,9 @@ docs/reviews/
     ├── 01-evidence-round1.json
     └── ...
 ```
+- **`<spec-slug>`**：本地 tracker 时取 `.scratch/<spec-slug>/` 的目录名；GitHub 等远程 tracker 时取 `spec-<Spec 的 issue 号>`。
+- **`<NN>`**：本地 tracker 时取工单文件的编号前缀；远程 tracker 时取工单的 issue 号。
+
 `/to-tickets` 的编号在每个 Spec 内都从 01 开始，所以要按 Spec 分目录。不保留不带轮次的副本，最新一轮就是编号最大的那一轮。
 
 ### 3. 通知格式
@@ -191,9 +209,9 @@ docs/reviews/
 
 ```bash
 # Coder → Reviewer（先保存提审报告）
-herdr agent prompt <PANE_REVIEWER> "【提审】<spec-slug>/<NN> <工单标题> Round <N>，类型：<代码/数据/写作>，报告：docs/reviews/<spec-slug>/<NN>-submission-round<N>.md"
+herdr agent prompt <PANE_REVIEWER> "【提审】<spec-slug>/<NN> <工单标题> Round <N>，类型：<代码/数据/写作>，commit：<hash>，报告：docs/reviews/<spec-slug>/<NN>-submission-round<N>.md"
 
-# Reviewer → Coder（先保存验收报告与证据）
+# Reviewer → Coder（先保存证据，再 mv 出验收报告）
 herdr agent prompt <PANE_CODER> "【裁决】<spec-slug>/<NN> Round <N>：<ACCEPTED/CHANGES_REQUIRED>，报告：docs/reviews/<spec-slug>/<NN>-acceptance-round<N>.md"
 ```
 
@@ -221,9 +239,9 @@ $$N = N_{\text{valid}} + N_{\text{excluded}}$$
 
 ## 九、新项目落地清单
 
-- [ ] 1. 复制项目骨架：`cp -rn templates/project/. <项目根目录>/`。这会放入 `AGENTS.md`、`CLAUDE.md`（内容为 `@AGENTS.md`，因为 Claude Code 只读 `CLAUDE.md`）`docs/reviews/` 下的两份评审模板，以及给人看的操作说明 `docs/agents/collaboration-quickstart.md`，路径与 `AGENTS.md` 的引用一致。若项目已有 `AGENTS.md`/`CLAUDE.md`，`-n` 会跳过它们，需要手工合并。
-- [ ] 2. 运行 `/setup-matt-pocock-skills`，配置 tracker（本地 `.scratch` 或 GitHub 等）。
+- [ ] 1. 复制项目骨架：`cp -rn templates/project/. <项目根目录>/`。这会放入 `AGENTS.md`、`CLAUDE.md`（内容为 `@AGENTS.md`，因为 Claude Code 只读 `CLAUDE.md`）、`docs/reviews/` 下的两份评审模板、等待脚本 `scripts/wait-for-verdict.sh`，以及给人看的操作说明 `docs/agents/collaboration-quickstart.md`，路径与 `AGENTS.md` 的引用一致。项目必须是 git 仓库（Coder 按工单提交，Reviewer 用 worktree 复验）。若项目已有 `AGENTS.md`/`CLAUDE.md`，`-n` 会跳过它们，需要手工合并。
+- [ ] 2. 运行 `/setup-matt-pocock-skills`，配置 tracker（本地 `.scratch` 或 GitHub 等）。由于骨架已放入 `CLAUDE.md`，setup 会把 `## Agent skills` 一节写进 `CLAUDE.md`；pi、Codex 读不到这一节，但 `AGENTS.md` 第 0 节直接指向 `docs/agents/issue-tracker.md`，所以不影响它们。
 - [ ] 3. 启动 Herdr，开两个窗格分别运行 Coder 与 Reviewer，用 `herdr pane list` 确认，并在 Reviewer 窗格发出启动语（见第五节）。
 - [ ] 4. 规划阶段：`/grill-with-docs` → `/to-spec` → `/to-tickets`，批准拆分方案。
 - [ ] 5. 执行阶段：在 Coder 窗格发出 `/goal`，观察第一张工单走完一次完整的提审与验收闭环。
-- [ ] 6. （可选）用 `templates/issue-tracker.md` 维护给人看的工单索引。
+- [ ] 6. （可选）用 `templates/ticket-index.md` 维护给人看的工单索引，放在 `docs/agents/ticket-index.md`。不要叫 `issue-tracker.md`，那个文件名已被 setup 用于 tracker 配置。

@@ -39,11 +39,31 @@ DEFAULT_IGNORE_PATTERNS = {
 }
 
 
+# 凭据与密钥：分发包会交给评审人和合作者，绝不能带出去
+SECRET_DIRS = {".ssh", ".gnupg", ".aws"}
+SECRET_NAMES = {".netrc", ".npmrc", ".pypirc", "credentials.json", "auth.json"}
+SECRET_SUFFIXES = (".pem", ".key", ".p12", ".pfx")
+
+
+def is_secret(part: str) -> bool:
+    return (
+        part in SECRET_DIRS
+        or part in SECRET_NAMES
+        or part == ".env"
+        or part.startswith(".env.")
+        or part.startswith("id_rsa")
+        or part.startswith("id_ed25519")
+        or part.endswith(SECRET_SUFFIXES)
+    )
+
+
 def should_ignore(path: Path) -> bool:
     for part in path.parts:
         if part in DEFAULT_IGNORE_PATTERNS:
             return True
         if part.endswith(".pyc") or part.endswith(".tmp") or part.endswith(".swp"):
+            return True
+        if is_secret(part):
             return True
     return False
 
@@ -80,7 +100,11 @@ def build_distribution_zip(
             for file in files:
                 file_path = current_dir / file
                 rel_path = file_path.relative_to(source_path)
+                if file_path.resolve() == output_zip:
+                    continue
                 if should_ignore(rel_path):
+                    if any(is_secret(p) for p in rel_path.parts):
+                        print(f"  - [跳过凭据] {rel_path.as_posix()}")
                     continue
                 if root_prefix:
                     arcname = f"{root_prefix}/{rel_path.as_posix()}"

@@ -1,4 +1,6 @@
-# 工单索引 (issue-tracker.md，可选)
+# 工单索引 (ticket-index.md，可选)
+
+> **放置位置**：项目的 `docs/agents/ticket-index.md`。**不要**命名为 `docs/agents/issue-tracker.md`，那是 `/setup-matt-pocock-skills` 写入 tracker 配置的文件，覆盖它会让 `/to-spec`、`/to-tickets` 找不到 tracker。
 
 > 工单的唯一事实来源是 `/to-tickets` 发布到 tracker 的工单本身（本地 `.scratch/<spec-slug>/issues/<NN>-<slug>.md`，或 GitHub/Linear issue）。本文件只是给人看的索引视图，**状态以工单本身为准**；若与工单不一致，以工单为准并修正本文件。不需要时可以不建。
 
