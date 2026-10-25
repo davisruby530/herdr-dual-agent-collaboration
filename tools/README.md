@@ -10,8 +10,12 @@
 | :--- | :--- | :--- | :--- |
 | **[`build_distribution_zip.py`](./build_distribution_zip.py)** | 跨平台零乱码成果压缩包构建器 | 彻底解决 Windows 解压 macOS 打包文件时的中文字符乱码与系统隐藏文件污染 | 科研成果打包、论文与复现代码向评审人/合作者轻量分发 |
 | **[`beautify_academic_docx.py`](./beautify_academic_docx.py)** | 出版级学术 Word 终稿与标准三线表自动排版器 | 解决 Markdown/Pandoc 导出的 docx 表格粗糙、中西文字体混乱、无三线表等问题 | 快速生成符合 CSSCI/SSCI 顶刊标准的审稿 Word 终稿 |
-| **[`verify_grounding_assertions.py`](./verify_grounding_assertions.py)** | 原文物理字符切片硬断言校验器 | 彻底消灭大模型信息抽取中的虚构幻觉、引文偏差与坐标偏移 (`source[start:end] == quote`) | LLM 实体识别、因果三元组抽取、政策条文引用、微观案例实证 |
-| **[`audit_multiset_integrity.py`](./audit_multiset_integrity.py)** | 大规模数据流水线多重集守恒与分母审计器 | 解决数据处理中样本分母模糊、静默遗漏丢失、重复键与归类重叠问题 | 数据清洗 ETL、全量语料过滤、实证样本分流审计 |
+| **[`verify_grounding_assertions.py`](../templates/project/tools/verify_grounding_assertions.py)** ¹ | 原文物理字符切片硬断言校验器 | 彻底消灭大模型信息抽取中的虚构幻觉、引文偏差与坐标偏移 (`source[start:end] == quote`) | LLM 实体识别、因果三元组抽取、政策条文引用、微观案例实证 |
+| **[`audit_multiset_integrity.py`](../templates/project/tools/audit_multiset_integrity.py)** ¹ | 大规模数据流水线多重集守恒与分母审计器 | 解决数据处理中样本分母模糊、静默遗漏丢失、重复键与归类重叠问题 | 数据清洗 ETL、全量语料过滤、实证样本分流审计 |
+
+---
+
+¹ 两个数据防线工具位于项目骨架 `templates/project/tools/`，随骨架复制到每个项目的 `tools/` 下，下文命令按落地后的项目路径书写。
 
 ---
 

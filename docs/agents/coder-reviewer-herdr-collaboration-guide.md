@@ -224,10 +224,10 @@ herdr agent prompt <PANE_CODER> "【裁决】<spec-slug>/<NN> Round <N>：<ACCEP
 ### 1. 多重集守恒与分母闭合
 输入与输出的唯一键多重集必须对得上，不得有缺失、重复或静默丢弃：
 $$N = N_{\text{valid}} + N_{\text{excluded}}$$
-工具：[`tools/audit_multiset_integrity.py`](../../tools/audit_multiset_integrity.py)。
+工具：[`tools/audit_multiset_integrity.py`](../../templates/project/tools/audit_multiset_integrity.py)（随骨架复制）。
 
 ### 2. 字符切片硬断言
-抽取的每一条记录都要附 `[char_start, char_end]`，并通过 `source_text[char_start:char_end] == extracted_quote` 校验。不允许模糊匹配、空串放行，也不允许回退成整段文本。工具：[`tools/verify_grounding_assertions.py`](../../tools/verify_grounding_assertions.py)。
+抽取的每一条记录都要附 `[char_start, char_end]`，并通过 `source_text[char_start:char_end] == extracted_quote` 校验。不允许模糊匹配、空串放行，也不允许回退成整段文本。工具：[`tools/verify_grounding_assertions.py`](../../templates/project/tools/verify_grounding_assertions.py)（随骨架复制）。
 
 ### 3. SHA-256 资产清单
 关键资产的 SHA-256 与字节数写入 `manifest.json`；下游读取前先校验，不一致立即中止。
@@ -239,7 +239,7 @@ $$N = N_{\text{valid}} + N_{\text{excluded}}$$
 
 ## 九、新项目落地清单
 
-- [ ] 1. 复制项目骨架：`cp -rn templates/project/. <项目根目录>/`。这会放入 `AGENTS.md`、`CLAUDE.md`（内容为 `@AGENTS.md`，因为 Claude Code 只读 `CLAUDE.md`）、`docs/reviews/` 下的两份评审模板、等待脚本 `scripts/wait-for-verdict.sh`，以及给人看的操作说明 `docs/agents/collaboration-quickstart.md`，路径与 `AGENTS.md` 的引用一致。项目必须是 git 仓库（Coder 按工单提交，Reviewer 用 worktree 复验）。若项目已有 `AGENTS.md`/`CLAUDE.md`，`-n` 会跳过它们，需要手工合并。
+- [ ] 1. 复制项目骨架：`cp -rn templates/project/. <项目根目录>/`。这会放入 `AGENTS.md`、`CLAUDE.md`（内容为 `@AGENTS.md`，因为 Claude Code 只读 `CLAUDE.md`）、`docs/reviews/` 下的两份评审模板、等待脚本 `scripts/wait-for-verdict.sh`、数据防线工具 `tools/`，以及给人看的操作说明 `docs/agents/collaboration-quickstart.md`，路径与 `AGENTS.md` 的引用一致。项目必须是 git 仓库（Coder 按工单提交，Reviewer 用 worktree 复验）。若项目已有 `AGENTS.md`/`CLAUDE.md`，`-n` 会跳过它们，需要手工合并。
 - [ ] 2. 运行 `/setup-matt-pocock-skills`，配置 tracker（本地 `.scratch` 或 GitHub 等）。由于骨架已放入 `CLAUDE.md`，setup 会把 `## Agent skills` 一节写进 `CLAUDE.md`；pi、Codex 读不到这一节，但 `AGENTS.md` 第 0 节直接指向 `docs/agents/issue-tracker.md`，所以不影响它们。
 - [ ] 3. 启动 Herdr，开两个窗格分别运行 Coder 与 Reviewer，用 `herdr pane list` 确认，并在 Reviewer 窗格发出启动语（见第五节）。
 - [ ] 4. 规划阶段：`/grill-with-docs` → `/to-spec` → `/to-tickets`，批准拆分方案。

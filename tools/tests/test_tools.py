@@ -9,11 +9,14 @@ import zipfile
 from pathlib import Path
 
 TOOLS = Path(__file__).resolve().parent.parent
+REPO = TOOLS.parent
+PROJECT_TOOLS = REPO / "templates/project/tools"
 
 
 def run(script, *args):
+    path = PROJECT_TOOLS / script if (PROJECT_TOOLS / script).exists() else TOOLS / script
     return subprocess.run(
-        [sys.executable, "-I", str(TOOLS / script), *map(str, args)],
+        [sys.executable, "-I", str(path), *map(str, args)],
         capture_output=True, text=True,
     )
 
@@ -145,7 +148,7 @@ class BuildZipTest(TmpDirCase):
 
 
 class WaitForVerdictTest(TmpDirCase):
-    SCRIPT = TOOLS.parent / "templates/project/scripts/wait-for-verdict.sh"
+    SCRIPT = REPO / "templates/project/scripts/wait-for-verdict.sh"
 
     def wait(self, *args):
         return subprocess.run(["bash", str(self.SCRIPT), *map(str, args)], capture_output=True, text=True)

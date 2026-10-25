@@ -13,7 +13,7 @@
    ```bash
    cp -rn templates/project/. <你的项目>/
    ```
-   这会放入 `AGENTS.md`、`CLAUDE.md`、`docs/reviews/` 下的两份评审模板、等待脚本 `scripts/wait-for-verdict.sh`，以及给人看的操作说明 `docs/agents/collaboration-quickstart.md`。路径与 `AGENTS.md` 中的引用一致，无需改名。项目须是 git 仓库；再运行一次 `/setup-matt-pocock-skills` 配置 tracker。
+   这会放入 `AGENTS.md`、`CLAUDE.md`、`docs/reviews/` 下的两份评审模板、等待脚本 `scripts/wait-for-verdict.sh`、数据防线工具 `tools/`，以及给人看的操作说明 `docs/agents/collaboration-quickstart.md`。路径与 `AGENTS.md` 中的引用一致，无需改名。项目须是 git 仓库；再运行一次 `/setup-matt-pocock-skills` 配置 tracker。
 2. 规划：`/grill-with-docs` → `/to-spec` → `/to-tickets`，批准拆分方案。
 3. 执行：启动 Herdr 的 Coder 与 Reviewer 两个窗格。在 Reviewer 窗格发出启动语：
    ```
@@ -35,8 +35,9 @@
 | ├ [`CLAUDE.md`](./templates/project/CLAUDE.md) | 让 Claude Code 加载 `AGENTS.md` |
 | ├ [`docs/reviews/submission-template.md`](./templates/project/docs/reviews/submission-template.md) | Coder 提审报告模板 |
 | ├ [`scripts/wait-for-verdict.sh`](./templates/project/scripts/wait-for-verdict.sh) | Coder 提审后阻塞等待裁决，避免 `/goal` 续跑空转 |
+| ├ [`tools/`](./templates/project/tools/) | 数据防线工具：多重集守恒审计、字符切片断言 |
 | ├ [`docs/agents/collaboration-quickstart.md`](./templates/project/docs/agents/collaboration-quickstart.md) | 给人看的操作说明：每一步做什么、如何处理上报 |
 | └ [`docs/reviews/acceptance-template.md`](./templates/project/docs/reviews/acceptance-template.md) | Reviewer 验收报告模板 |
 | [`templates/ticket-index.md`](./templates/ticket-index.md) | 可选的工单索引视图（放在项目的 `docs/agents/ticket-index.md`） |
 | [`templates/academic_paper_workflow.md`](./templates/academic_paper_workflow.md) | 学术论文修改的预制工单骨架 |
-| [`tools/`](./tools/README.md) | 通用工具：多重集守恒审计、字符切片断言、学术 Word 排版、分发打包 |
+| [`tools/`](./tools/README.md) | 通用工具：学术 Word 排版、分发打包；回归测试（含骨架内工具） |

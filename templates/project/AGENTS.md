@@ -25,7 +25,7 @@
 1. 从 tracker 选一张可开工的工单（前置工单全部 `completed`；多张可开工时取编号最小者），状态改为 `in_progress`，读取工单全文与 Spec 相关条目。
 2. 判定**工单类型**：
    - **代码**：调用 `tdd` 技能，在 Spec 约定的测试接缝上测试先行。
-   - **数据**：同代码工单，另需满足数据防线：输入输出多重集守恒（N = N_valid + N_excluded，且无重复键）、抽取结果的字符切片硬断言（`source[start:end] == quote`）、关键资产 SHA-256 清单、禁止硬编码伪造数据。
+   - **数据**：同代码工单，另需满足数据防线：输入输出多重集守恒（N = N_valid + N_excluded，且无重复键，用 `tools/audit_multiset_integrity.py`）、抽取结果的字符切片硬断言（`source[start:end] == quote`，用 `tools/verify_grounding_assertions.py`）、关键资产 SHA-256 清单、禁止硬编码伪造数据。Reviewer 在沙箱中用同样的工具复跑。
    - **写作**：按工单验收标准与对应写作规范修改，逐条自检。
 3. 代码与数据工单完成后调用 `code-review` 技能自检，并修复其发现的问题。
    - 若当前 agent 没有 `tdd` 或 `code-review` 技能，按测试先行、提交前自审的原则手工执行，并在提审报告中注明。

@@ -8,7 +8,7 @@
 
 ## 一次性准备
 
-1. **骨架已就位**：本文件随项目骨架（`templates/project/`）复制而来，同时到位的还有 `AGENTS.md`、`CLAUDE.md`、`docs/reviews/` 下的两份评审模板和 `scripts/wait-for-verdict.sh`。项目必须是 git 仓库：Coder 每张工单都会 commit，Reviewer 按 commit 在 worktree 里复验。如果项目原本就有 `AGENTS.md` 或 `CLAUDE.md`，复制时会被跳过，需要手工把规则合并进去。
+1. **骨架已就位**：本文件随项目骨架（`templates/project/`）复制而来，同时到位的还有 `AGENTS.md`、`CLAUDE.md`、`docs/reviews/` 下的两份评审模板、`scripts/wait-for-verdict.sh`，以及数据防线工具 `tools/audit_multiset_integrity.py`、`tools/verify_grounding_assertions.py`（只依赖 Python 标准库）。项目必须是 git 仓库：Coder 每张工单都会 commit，Reviewer 按 commit 在 worktree 里复验。如果项目原本就有 `AGENTS.md` 或 `CLAUDE.md`，复制时会被跳过，需要手工把规则合并进去。
 2. **配置 tracker**：在项目里运行 `/setup-matt-pocock-skills`，选本地 `.scratch` 或 GitHub。Spec 和工单都会发布到这里。setup 会把 `## Agent skills` 写进 `CLAUDE.md`，这是正常的；pi、Codex 通过 `AGENTS.md` 第 0 节找到 tracker 配置。用 GitHub 的话，先确保 `gh auth status` 显示已登录。
 
 ## 每个 Spec 的流程
