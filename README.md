@@ -15,7 +15,7 @@
 | 模块类别 | 文件/目录路径 | 核心功能与复用定位 |
 | :--- | :--- | :--- |
 | **协作规范指南** | [`README.md`](./README.md) / [`CODER_REVIEWER_HERDR_COLLABORATION_GUIDE.md`](./CODER_REVIEWER_HERDR_COLLABORATION_GUIDE.md) | 双智能体权力分立、两铁律、Herdr 动态通信协议与 SOP 全流程指南 |
-| **标准写作流** | [`论文写作workflow v1 1014.txt`](./论文写作workflow%20v1%201014.txt) / [`templates/paper_writing_workflow.txt`](./templates/paper_writing_workflow.txt) | 顶级学术期刊 (Research Policy / Evaluation) 标准的论文各章节写作与审查 8 步工作流 |
+| **学术论文工作流（应用模板）** | [`templates/academic_paper_workflow.md`](./templates/academic_paper_workflow.md) | 面向学术论文的分章节写作与审查流程；属于本项目的一种应用场景 |
 | **落地协作规则** | [`templates/AGENTS.md`](./templates/AGENTS.md) | 新项目直接复制到根目录，立即生效三权分立与不可逾越两铁律 |
 | **工单追踪台账** | [`templates/issue-tracker.md`](./templates/issue-tracker.md) | 新项目工单拓扑依赖图、状态机流转（`pending`/`in_progress`/`completed`）模板 |
 | **标准提审报告** | [`templates/review_submission_template.md`](./templates/review_submission_template.md) | Coder 提审标准 Markdown 骨架（对账前轮阻断项、测试数据证据） |
