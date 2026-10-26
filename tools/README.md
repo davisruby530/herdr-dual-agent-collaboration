@@ -10,8 +10,12 @@
 | :--- | :--- | :--- | :--- |
 | **[`build_distribution_zip.py`](./build_distribution_zip.py)** | 跨平台零乱码成果压缩包构建器 | 彻底解决 Windows 解压 macOS 打包文件时的中文字符乱码与系统隐藏文件污染 | 科研成果打包、论文与复现代码向评审人/合作者轻量分发 |
 | **[`beautify_academic_docx.py`](./beautify_academic_docx.py)** | 出版级学术 Word 终稿与标准三线表自动排版器 | 解决 Markdown/Pandoc 导出的 docx 表格粗糙、中西文字体混乱、无三线表等问题 | 快速生成符合 CSSCI/SSCI 顶刊标准的审稿 Word 终稿 |
-| **[`verify_grounding_assertions.py`](./verify_grounding_assertions.py)** | 原文物理字符切片硬断言校验器 | 彻底消灭大模型信息抽取中的虚构幻觉、引文偏差与坐标偏移 (`source[start:end] == quote`) | LLM 实体识别、因果三元组抽取、政策条文引用、微观案例实证 |
-| **[`audit_multiset_integrity.py`](./audit_multiset_integrity.py)** | 大规模数据流水线多重集守恒与分母审计器 | 解决数据处理中样本分母模糊、静默遗漏丢失、重复键与归类重叠问题 | 数据清洗 ETL、全量语料过滤、实证样本分流审计 |
+| **[`verify_grounding_assertions.py`](../templates/project/tools/verify_grounding_assertions.py)** ¹ | 原文物理字符切片硬断言校验器 | 彻底消灭大模型信息抽取中的虚构幻觉、引文偏差与坐标偏移 (`source[start:end] == quote`) | LLM 实体识别、因果三元组抽取、政策条文引用、微观案例实证 |
+| **[`audit_multiset_integrity.py`](../templates/project/tools/audit_multiset_integrity.py)** ¹ | 大规模数据流水线多重集守恒与分母审计器 | 解决数据处理中样本分母模糊、静默遗漏丢失、重复键与归类重叠问题 | 数据清洗 ETL、全量语料过滤、实证样本分流审计 |
+
+---
+
+¹ 两个数据防线工具位于项目骨架 `templates/project/tools/`，随骨架复制到每个项目的 `tools/` 下，下文命令按落地后的项目路径书写。
 
 ---
 
@@ -19,7 +23,7 @@
 
 ### 1. `build_distribution_zip.py`：跨平台零乱码成果包构建
 
-在 macOS 上打包包含中文目录与文档的科研包时，Windows 自带解压或 WinRAR 经常因 GBK/UTF-8 字符集判断失误而发生乱码。本工具强制为每个文件注入 PKZIP 规范的 **Bit 11 (0x800) Language Encoding Flag**，并在打包时自动剔除 `.DS_Store`、`__MACOSX`、`.git`、`__pycache__` 等冗余垃圾。
+在 macOS 上打包包含中文目录与文档的科研包时，Windows 自带解压或 WinRAR 经常因 GBK/UTF-8 字符集判断失误而发生乱码。本工具强制为每个文件注入 PKZIP 规范的 **Bit 11 (0x800) Language Encoding Flag**，并在打包时自动剔除 `.DS_Store`、`__MACOSX`、`.git`、`__pycache__` 等冗余垃圾。凭据与密钥（`.env`、`.env.*`、`*.pem`、`*.key`、`id_rsa*`、`.ssh/`、`.netrc` 等）也会自动跳过并在输出中列出；源路径本身位于凭据目录（如 `~/.ssh/config`）时直接拒绝；文件符号链接按目标判定，指向源目录以外或指向凭据的链接一律跳过；输出包位于源目录内时不会把自身打进去。
 
 ```bash
 # 基本用法：将成果目录打包为 release.zip，并增加顶层目录前缀
@@ -46,7 +50,7 @@ python3 tools/beautify_academic_docx.py raw_draft.docx publication_ready.docx
 
 大模型在做长文本抽取时，容易产生“局部篡改原文”或“伪造切片坐标”的幻觉。本工具逐条核验抽取结果：
 $$\text{source\_text}[\text{char\_start}:\text{char\_end}] == \text{extracted\_quote}$$
-单字不符或全篇放行 `[0, len)` 立即报错并阻断交付。
+单字不符、坐标为布尔值或越界、原句为空、全篇坐标 `[0, len)`（无论文本长短；确为整篇引用时显式传 `--allow-full-span`），以及抽取文件为空（0 条断言），都会报错并阻断交付。`--id-field` 同时作用于语料库与抽取结果。
 
 ```bash
 # 对语料库与抽取结果做 100% 物理硬断言对账
@@ -67,7 +71,7 @@ python3 tools/verify_grounding_assertions.py \
 
 在大规模实证数据流中把守数学守恒底线：
 $$\text{全量输入 } N_{\text{raw}} = \text{有效处理 } N_{\text{valid}} + \text{合法排除 } N_{\text{excluded}}$$
-严格断言交集为空、并集完全一致、零重复键、零静默丢弃。
+严格断言交集为空、并集完全一致、任一文件零重复键、零静默丢弃、计数守恒。记录缺少 ID 字段（依次尝试 `--id-key`、`paper_id`、`doc_id`）时直接报错，不会被当作空串放行。
 
 ```bash
 python3 tools/audit_multiset_integrity.py \
@@ -76,4 +80,14 @@ python3 tools/audit_multiset_integrity.py \
     --excluded path/to/excluded_records.json \
     --id-key id \
     --report path/to/denominator_audit_report.json
+```
+
+---
+
+## 🧪 回归测试
+
+工具箱与骨架里的 `scripts/wait-for-verdict.sh` 都有回归测试，只依赖 Python 标准库：
+
+```bash
+python3 -m unittest discover -s tools/tests
 ```

@@ -11,13 +11,16 @@ verify_grounding_assertions.py
        source_text[char_start:char_end] == extracted_quote
 3. 严格拦截四类防御性反例：
    - 坐标越界或反向 (char_start >= char_end 或 char_end > len)；
-   - 虚假全篇放行 (char_start == 0 且 char_end == len(text))；
-   - 空文本或占位符放行；
+   - 虚假全篇放行 (char_start == 0 且 char_end == len(text))，除非显式传入 --allow-full-span；
+   - 空文本或占位符放行，以及抽取文件为空 (0 条断言) 时的空跑放行；
    - 字符内容与源文不匹配（单字偏差即报错）。
 
 用法：
     python verify_grounding_assertions.py <corpus_file> <extractions_file> [report_output] \
-        [--id-field id] [--text-field text] [--quote-field quote] [--start-field start] [--end-field end]
+        [--id-field id] [--text-field text] [--quote-field quote] [--start-field start] [--end-field end] \
+        [--allow-full-span]
+
+    --id-field 同时作用于语料库与抽取结果；字段缺失时回退到 doc_id / paper_id / id。
 """
 
 import sys
@@ -25,6 +28,18 @@ import json
 import argparse
 from pathlib import Path
 from typing import Dict, Any, List, Tuple
+
+
+ID_FALLBACKS = ("doc_id", "paper_id", "id")
+
+
+def get_id(item: Dict[str, Any], id_field: str) -> str:
+    """取记录 ID：先用 id_field，缺失时依次回退到常见 ID 字段名"""
+    for key in (id_field, *ID_FALLBACKS):
+        value = item.get(key)
+        if value not in (None, ""):
+            return str(value)
+    return ""
 
 
 def load_corpus(corpus_path: Path, id_field: str = "id", text_field: str = "text") -> Dict[str, str]:
@@ -37,7 +52,7 @@ def load_corpus(corpus_path: Path, id_field: str = "id", text_field: str = "text
                 if not line:
                     continue
                 item = json.loads(line)
-                doc_id = str(item.get(id_field, ""))
+                doc_id = get_id(item, id_field)
                 raw_text = item.get(text_field, "")
                 if doc_id:
                     corpus[doc_id] = raw_text
@@ -60,7 +75,7 @@ def load_corpus(corpus_path: Path, id_field: str = "id", text_field: str = "text
                     corpus[str(k)] = v if isinstance(v, str) else v.get(text_field, "")
             else:
                 for item in items:
-                    doc_id = str(item.get(id_field, ""))
+                    doc_id = get_id(item, id_field)
                     raw_text = item.get(text_field, "")
                     if doc_id:
                         corpus[doc_id] = raw_text
@@ -72,14 +87,15 @@ def verify_grounding(
     corpus_path: Path,
     extractions_path: Path,
     report_output: Path = None,
-    id_field: str = "doc_id",
+    id_field: str = "id",
     text_field: str = "text",
     quote_field: str = "quote",
     start_field: str = "start",
-    end_field: str = "end"
+    end_field: str = "end",
+    allow_full_span: bool = False
 ) -> int:
     print(f"[*] 载入原始语料: {corpus_path}")
-    corpus = load_corpus(corpus_path, id_field="id", text_field=text_field)
+    corpus = load_corpus(corpus_path, id_field=id_field, text_field=text_field)
     print(f"    - 成功索引底账文档: {len(corpus):,} 篇")
 
     print(f"[*] 读取待核验抽取数据: {extractions_path}")
@@ -102,7 +118,7 @@ def verify_grounding(
     failures = []
 
     for idx, item in enumerate(assertions, 1):
-        doc_id = str(item.get(id_field, item.get("paper_id", item.get("id", ""))))
+        doc_id = get_id(item, id_field)
         quote = item.get(quote_field, item.get("extracted_text", item.get("statement", "")))
         start = item.get(start_field, item.get("char_start", None))
         end = item.get(end_field, item.get("char_end", None))
@@ -114,7 +130,9 @@ def verify_grounding(
             error_reason = f"文档 ID {doc_id} 在源语料库中不存在"
         elif start is None or end is None:
             error_reason = "缺失物理坐标 start 或 end"
-        elif not isinstance(start, int) or not isinstance(end, int):
+        elif not isinstance(quote, str) or quote == "":
+            error_reason = "抽取原句为空或不是字符串"
+        elif isinstance(start, bool) or isinstance(end, bool) or not isinstance(start, int) or not isinstance(end, int):
             error_reason = f"坐标不是整数类型: [{start}, {end}]"
         elif start < 0 or end < 0 or start >= end:
             error_reason = f"坐标范围非法: [{start}, {end}]"
@@ -122,8 +140,8 @@ def verify_grounding(
             raw_text = corpus[doc_id]
             if end > len(raw_text):
                 error_reason = f"坐标超出文本总长度 (end={end} > len={len(raw_text)})"
-            elif start == 0 and end == len(raw_text) and len(raw_text) > 100:
-                error_reason = "疑似虚假全篇放行 (坐标为 [0, len])"
+            elif start == 0 and end == len(raw_text) and not allow_full_span:
+                error_reason = "疑似虚假全篇放行 (坐标为 [0, len])；若确为整篇引用，请显式传入 --allow-full-span"
             else:
                 sliced = raw_text[start:end]
                 if sliced != quote:
@@ -165,6 +183,9 @@ def verify_grounding(
             json.dump(report_data, f, ensure_ascii=False, indent=2)
         print(f"[+] 详细质检报告已保存: {report_output}")
 
+    if total == 0:
+        print("[FAIL] 抽取文件中没有任何断言，拒绝空跑放行。", file=sys.stderr)
+        return 1
     if failed_count > 0:
         print(f"[FAIL] 存在 {failed_count} 条断言未通过硬切片检验！拒绝放行。", file=sys.stderr)
         return 1
@@ -178,11 +199,12 @@ def main():
     parser.add_argument("corpus", help="原始底账语料库文件路径 (.json 或 .jsonl)")
     parser.add_argument("extractions", help="待检验的抽取结果文件路径 (.json 或 .jsonl)")
     parser.add_argument("report", nargs="?", default=None, help="可选：质检报告输出路径 (.json)")
-    parser.add_argument("--id-field", default="id", help="语料与抽取结果中的 ID 字段名 (默认 id)")
+    parser.add_argument("--id-field", default="id", help="语料与抽取结果中的 ID 字段名 (默认 id；缺失时回退 doc_id/paper_id/id)")
     parser.add_argument("--text-field", default="text", help="语料中的正文字段名 (默认 text)")
     parser.add_argument("--quote-field", default="quote", help="抽取记录中的原句字段名 (默认 quote)")
     parser.add_argument("--start-field", default="start", help="抽取记录中的起点坐标字段名 (默认 start)")
     parser.add_argument("--end-field", default="end", help="抽取记录中的终点坐标字段名 (默认 end)")
+    parser.add_argument("--allow-full-span", action="store_true", help="允许坐标为整篇 [0, len] 的断言 (默认拒绝)")
     args = parser.parse_args()
 
     sys.exit(verify_grounding(
@@ -193,7 +215,8 @@ def main():
         text_field=args.text_field,
         quote_field=args.quote_field,
         start_field=args.start_field,
-        end_field=args.end_field
+        end_field=args.end_field,
+        allow_full_span=args.allow_full_span
     ))
 
 

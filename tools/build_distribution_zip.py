@@ -39,11 +39,35 @@ DEFAULT_IGNORE_PATTERNS = {
 }
 
 
+# 凭据与密钥：分发包会交给评审人和合作者，绝不能带出去
+SECRET_DIRS = {".ssh", ".gnupg", ".aws"}
+SECRET_NAMES = {".netrc", ".npmrc", ".pypirc", "credentials.json", "auth.json"}
+SECRET_SUFFIXES = (".pem", ".key", ".p12", ".pfx")
+
+
+def is_secret(part: str) -> bool:
+    return (
+        part in SECRET_DIRS
+        or part in SECRET_NAMES
+        or part == ".env"
+        or part.startswith(".env.")
+        or part.startswith("id_rsa")
+        or part.startswith("id_ed25519")
+        or part.endswith(SECRET_SUFFIXES)
+    )
+
+
+def has_secret_part(path: Path) -> bool:
+    return any(is_secret(part) for part in path.parts)
+
+
 def should_ignore(path: Path) -> bool:
     for part in path.parts:
         if part in DEFAULT_IGNORE_PATTERNS:
             return True
         if part.endswith(".pyc") or part.endswith(".tmp") or part.endswith(".swp"):
+            return True
+        if is_secret(part):
             return True
     return False
 
@@ -53,11 +77,17 @@ def build_distribution_zip(
     output_zip: Path,
     root_prefix: str = ""
 ) -> int:
+    given_path = source_path.absolute()
     source_path = source_path.resolve()
     output_zip = output_zip.resolve()
 
     if not source_path.exists():
         print(f"[ERROR] 源路径不存在: {source_path}", file=sys.stderr)
+        return 1
+
+    # 检查完整路径（含父目录与符号链接目标），如 ~/.ssh/config、~/.aws/config
+    if has_secret_part(given_path) or has_secret_part(source_path):
+        print(f"[ERROR] 源路径位于凭据目录或本身是凭据，拒绝打包: {given_path}", file=sys.stderr)
         return 1
 
     print(f"[*] 开始构建跨平台防乱码分发包:")
@@ -70,6 +100,10 @@ def build_distribution_zip(
 
     files_to_pack = []
     if source_path.is_file():
+        if should_ignore(Path(source_path.name)):
+            reason = "凭据" if is_secret(source_path.name) else "排除规则"
+            print(f"[ERROR] 源文件命中{reason}，拒绝打包: {source_path.name}", file=sys.stderr)
+            return 1
         arcname = f"{root_prefix}/{source_path.name}" if root_prefix else source_path.name
         files_to_pack.append((source_path, arcname))
     else:
@@ -80,8 +114,18 @@ def build_distribution_zip(
             for file in files:
                 file_path = current_dir / file
                 rel_path = file_path.relative_to(source_path)
-                if should_ignore(rel_path):
+                if file_path.resolve() == output_zip:
                     continue
+                if should_ignore(rel_path):
+                    if has_secret_part(rel_path):
+                        print(f"  - [跳过凭据] {rel_path.as_posix()}")
+                    continue
+                # 文件符号链接：打包的是目标内容，所以按目标判定；指向源目录以外一律跳过
+                if file_path.is_symlink():
+                    target = file_path.resolve()
+                    if not target.is_relative_to(source_path) or should_ignore(target.relative_to(source_path)):
+                        print(f"  - [跳过外部或凭据链接] {rel_path.as_posix()} -> {target}")
+                        continue
                 if root_prefix:
                     arcname = f"{root_prefix}/{rel_path.as_posix()}"
                 else:
