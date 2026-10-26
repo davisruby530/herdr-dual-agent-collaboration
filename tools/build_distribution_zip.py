@@ -57,6 +57,10 @@ def is_secret(part: str) -> bool:
     )
 
 
+def has_secret_part(path: Path) -> bool:
+    return any(is_secret(part) for part in path.parts)
+
+
 def should_ignore(path: Path) -> bool:
     for part in path.parts:
         if part in DEFAULT_IGNORE_PATTERNS:
@@ -73,11 +77,17 @@ def build_distribution_zip(
     output_zip: Path,
     root_prefix: str = ""
 ) -> int:
+    given_path = source_path.absolute()
     source_path = source_path.resolve()
     output_zip = output_zip.resolve()
 
     if not source_path.exists():
         print(f"[ERROR] 源路径不存在: {source_path}", file=sys.stderr)
+        return 1
+
+    # 检查完整路径（含父目录与符号链接目标），如 ~/.ssh/config、~/.aws/config
+    if has_secret_part(given_path) or has_secret_part(source_path):
+        print(f"[ERROR] 源路径位于凭据目录或本身是凭据，拒绝打包: {given_path}", file=sys.stderr)
         return 1
 
     print(f"[*] 开始构建跨平台防乱码分发包:")
@@ -107,9 +117,15 @@ def build_distribution_zip(
                 if file_path.resolve() == output_zip:
                     continue
                 if should_ignore(rel_path):
-                    if any(is_secret(p) for p in rel_path.parts):
+                    if has_secret_part(rel_path):
                         print(f"  - [跳过凭据] {rel_path.as_posix()}")
                     continue
+                # 文件符号链接：打包的是目标内容，所以按目标判定；指向源目录以外一律跳过
+                if file_path.is_symlink():
+                    target = file_path.resolve()
+                    if not target.is_relative_to(source_path) or should_ignore(target.relative_to(source_path)):
+                        print(f"  - [跳过外部或凭据链接] {rel_path.as_posix()} -> {target}")
+                        continue
                 if root_prefix:
                     arcname = f"{root_prefix}/{rel_path.as_posix()}"
                 else:

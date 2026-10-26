@@ -154,6 +154,45 @@ class BuildZipTest(TmpDirCase):
                 self.assertEqual(r.returncode, 1, r.stdout)
                 self.assertFalse(out.exists())
 
+    def test_plain_named_file_in_secret_dir_is_refused(self):
+        for d in (".ssh", ".aws"):
+            with self.subTest(dir=d):
+                src = self.write(f"home/{d}/config", "k")
+                out = self.dir / f"{d}.zip"
+                r = run(self.SCRIPT, src, out)
+                self.assertEqual(r.returncode, 1, r.stdout)
+                self.assertFalse(out.exists())
+
+    def test_secret_dir_as_source_is_refused(self):
+        self.write("home/.ssh/config", "k")
+        self.assertEqual(run(self.SCRIPT, self.dir / "home/.ssh", self.dir / "out.zip").returncode, 1)
+
+    def test_symlink_to_secret_is_not_packed(self):
+        key = self.write("home/.ssh/id_rsa", "PRIVATE")
+        self.write("pkg/paper.md", "x")
+        (self.dir / "pkg/notes.txt").symlink_to(key)
+        out = self.dir / "out.zip"
+        self.assertEqual(run(self.SCRIPT, self.dir / "pkg", out).returncode, 0)
+        with zipfile.ZipFile(out) as zf:
+            self.assertEqual(zf.namelist(), ["paper.md"])
+
+    def test_symlink_to_outside_file_is_not_packed(self):
+        outside = self.write("elsewhere/data.csv", "1")
+        self.write("pkg/paper.md", "x")
+        (self.dir / "pkg/data.csv").symlink_to(outside)
+        out = self.dir / "out.zip"
+        self.assertEqual(run(self.SCRIPT, self.dir / "pkg", out).returncode, 0)
+        with zipfile.ZipFile(out) as zf:
+            self.assertEqual(zf.namelist(), ["paper.md"])
+
+    def test_symlink_inside_source_is_packed(self):
+        self.write("pkg/paper.md", "x")
+        (self.dir / "pkg/link.md").symlink_to(self.dir / "pkg/paper.md")
+        out = self.dir / "out.zip"
+        self.assertEqual(run(self.SCRIPT, self.dir / "pkg", out).returncode, 0)
+        with zipfile.ZipFile(out) as zf:
+            self.assertEqual(sorted(zf.namelist()), ["link.md", "paper.md"])
+
     def test_plain_single_file_source_is_packed(self):
         src = self.write("paper.md", "x")
         out = self.dir / "out.zip"

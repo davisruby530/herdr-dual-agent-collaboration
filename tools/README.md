@@ -23,7 +23,7 @@
 
 ### 1. `build_distribution_zip.py`：跨平台零乱码成果包构建
 
-在 macOS 上打包包含中文目录与文档的科研包时，Windows 自带解压或 WinRAR 经常因 GBK/UTF-8 字符集判断失误而发生乱码。本工具强制为每个文件注入 PKZIP 规范的 **Bit 11 (0x800) Language Encoding Flag**，并在打包时自动剔除 `.DS_Store`、`__MACOSX`、`.git`、`__pycache__` 等冗余垃圾。凭据与密钥（`.env`、`.env.*`、`*.pem`、`*.key`、`id_rsa*`、`.ssh/`、`.netrc` 等）也会自动跳过并在输出中列出；输出包位于源目录内时不会把自身打进去。
+在 macOS 上打包包含中文目录与文档的科研包时，Windows 自带解压或 WinRAR 经常因 GBK/UTF-8 字符集判断失误而发生乱码。本工具强制为每个文件注入 PKZIP 规范的 **Bit 11 (0x800) Language Encoding Flag**，并在打包时自动剔除 `.DS_Store`、`__MACOSX`、`.git`、`__pycache__` 等冗余垃圾。凭据与密钥（`.env`、`.env.*`、`*.pem`、`*.key`、`id_rsa*`、`.ssh/`、`.netrc` 等）也会自动跳过并在输出中列出；源路径本身位于凭据目录（如 `~/.ssh/config`）时直接拒绝；文件符号链接按目标判定，指向源目录以外或指向凭据的链接一律跳过；输出包位于源目录内时不会把自身打进去。
 
 ```bash
 # 基本用法：将成果目录打包为 release.zip，并增加顶层目录前缀
