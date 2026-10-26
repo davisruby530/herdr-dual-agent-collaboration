@@ -70,7 +70,7 @@ def extract_ids_from_file(filepath: Path, id_key: str = "id") -> List[str]:
                 ids = [record_id(item, id_key, filepath, i) for i, item in enumerate(data, 1)]
             elif isinstance(data, dict):
                 # 字典的键本身就是 ID
-                ids = [str(k) for k in data.keys()]
+                ids = [record_id(k, id_key, filepath, i) for i, k in enumerate(data.keys(), 1)]
     else:
         # TXT 每行一个 ID
         with open(filepath, "r", encoding="utf-8") as f:

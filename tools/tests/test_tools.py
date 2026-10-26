@@ -68,6 +68,13 @@ class AuditMultisetTest(TmpDirCase):
         self.assertNotEqual(r.returncode, 0)
         self.assertIn("缺少", r.stderr)
 
+    def test_empty_key_in_json_object_fails(self):
+        raw = self.write("raw.json", {"": "record"})
+        valid = self.write("valid.json", {"": "record"})
+        r = self.audit(raw, valid)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("缺少", r.stderr)
+
     def test_missing_record_fails(self):
         raw = self.write("raw.txt", "a\nb\n")
         valid = self.write("valid.txt", "a\n")
@@ -135,6 +142,22 @@ class BuildZipTest(TmpDirCase):
         out = self.dir / "out.zip"
         r = run(self.SCRIPT, src, out)
         self.assertEqual(r.returncode, 0, r.stderr)
+        with zipfile.ZipFile(out) as zf:
+            self.assertEqual(zf.namelist(), ["paper.md"])
+
+    def test_secret_single_file_source_is_refused(self):
+        for name in (".env", "server.pem", "id_ed25519"):
+            with self.subTest(name=name):
+                src = self.write(name, "k")
+                out = self.dir / f"{name}.zip"
+                r = run(self.SCRIPT, src, out)
+                self.assertEqual(r.returncode, 1, r.stdout)
+                self.assertFalse(out.exists())
+
+    def test_plain_single_file_source_is_packed(self):
+        src = self.write("paper.md", "x")
+        out = self.dir / "out.zip"
+        self.assertEqual(run(self.SCRIPT, src, out).returncode, 0)
         with zipfile.ZipFile(out) as zf:
             self.assertEqual(zf.namelist(), ["paper.md"])
 

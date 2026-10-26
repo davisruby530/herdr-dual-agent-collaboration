@@ -90,6 +90,10 @@ def build_distribution_zip(
 
     files_to_pack = []
     if source_path.is_file():
+        if should_ignore(Path(source_path.name)):
+            reason = "凭据" if is_secret(source_path.name) else "排除规则"
+            print(f"[ERROR] 源文件命中{reason}，拒绝打包: {source_path.name}", file=sys.stderr)
+            return 1
         arcname = f"{root_prefix}/{source_path.name}" if root_prefix else source_path.name
         files_to_pack.append((source_path, arcname))
     else:
