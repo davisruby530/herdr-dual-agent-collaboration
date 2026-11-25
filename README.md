@@ -7,6 +7,17 @@
 
 **完整指南**：[`docs/agents/coder-reviewer-herdr-collaboration-guide.md`](./docs/agents/coder-reviewer-herdr-collaboration-guide.md)
 
+## 作为技能安装
+
+让 Claude Code、Codex、Antigravity（agy）、pi 等直接调用本框架：
+
+```bash
+skills/install.sh          # 安装到 ~/.agents/skills/herdr-dual-agent 并建软链接
+skills/install.sh --force  # 仓库更新后重装
+```
+
+安装后新开会话，对 agent 说“用双 agent 协作推进本项目”即可。不安装技能时，按下面的步骤手工使用。
+
 ## 快速上手
 
 1. 把项目骨架复制到项目根目录（`-n` 不覆盖已有文件）：
@@ -30,6 +41,7 @@
 | :--- | :--- |
 | [`GLOSSARY.md`](./GLOSSARY.md) | 框架术语（规划阶段、执行阶段、工单、提审、上报等） |
 | [`docs/adr/`](./docs/adr/) | 架构决策记录 |
+| [`skills/`](./skills/) | `herdr-dual-agent` 技能的 `SKILL.md` 与安装脚本 |
 | [`templates/project/`](./templates/project/) | 项目骨架，目录结构与落地后一致，整体复制即可 |
 | ├ [`AGENTS.md`](./templates/project/AGENTS.md) | 项目协作规则：两大铁律、单张工单的执行步骤、上报条件 |
 | ├ [`CLAUDE.md`](./templates/project/CLAUDE.md) | 让 Claude Code 加载 `AGENTS.md` |
